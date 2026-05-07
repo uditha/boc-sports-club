@@ -1,0 +1,55 @@
+{
+  "version": "7",
+  "dialect": "sqlite",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "6",
+      "when": 1778086115886,
+      "tag": "0000_glossy_thanos",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "6",
+      "when": 1778100646855,
+      "tag": "0001_purple_radioactive_man",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1778101347371,
+      "tag": "0002_equal_the_watchers",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "6",
+      "when": 1778101940967,
+      "tag": "0003_natural_randall",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1778103552320,
+      "tag": "0004_jazzy_vance_astro",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1778129827689,
+      "tag": "0005_crazy_black_tarantula",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1778130783553,
+      "tag": "0006_gigantic_nico_minoru",
+      "breakpoints": true
+    }
+  ]
+}
