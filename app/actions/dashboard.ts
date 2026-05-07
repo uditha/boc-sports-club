@@ -2,7 +2,7 @@
 
 import { getDb } from "@/db";
 import { results, events, players } from "@/db/schema";
-import { eq, desc, count, sum, sql } from "drizzle-orm";
+import { eq, desc, count, sum, sql, and } from "drizzle-orm";
 import { requireUser } from "@/lib/auth-helpers";
 import { getRankings, type RankingRow } from "./rankings";
 
@@ -46,7 +46,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
   ] = await Promise.all([
     db.select({ id: players.id, active: players.active, sport: players.sport, gender: players.gender }).from(players),
     db.select({ cnt: count() }).from(events),
-    db.select({ marks: results.marksAwarded }).from(results),
+    db.select({ marks: results.marksAwarded }).from(results).where(eq(results.status, "approved")),
     db.select({ id: events.id, name: events.name, type: events.type, eventDate: events.eventDate })
       .from(events).orderBy(desc(events.eventDate)).limit(5),
     getRankings({ period: "all_time", activeOnly: false, topN: 5, gender: "M" }),
@@ -58,7 +58,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     })
       .from(results)
       .innerJoin(events, eq(results.eventId, events.id))
-      .where(eq(events.year, currentYear))
+      .where(and(eq(events.year, currentYear), eq(results.status, "approved")))
       .groupBy(sql`strftime('%m', ${events.eventDate})`),
     // Event type breakdown
     db.select({ type: events.type, cnt: count() }).from(events).groupBy(events.type),
@@ -75,6 +75,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
       .from(results)
       .innerJoin(players, eq(results.playerId, players.id))
       .innerJoin(events, eq(results.eventId, events.id))
+      .where(eq(results.status, "approved"))
       .orderBy(desc(results.createdAt))
       .limit(8),
     // Top performer all time
@@ -85,6 +86,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     })
       .from(results)
       .innerJoin(players, eq(results.playerId, players.id))
+      .where(eq(results.status, "approved"))
       .groupBy(results.playerId, players.fullName)
       .orderBy(desc(sum(results.marksAwarded)))
       .limit(1),
@@ -92,7 +94,7 @@ export async function getDashboardStats(): Promise<DashboardStats> {
 
   const recentEvents = await Promise.all(
     recentEventsRaw.map(async (e) => {
-      const [row] = await db.select({ cnt: count() }).from(results).where(eq(results.eventId, e.id));
+      const [row] = await db.select({ cnt: count() }).from(results).where(and(eq(results.eventId, e.id), eq(results.status, "approved")));
       return { ...e, resultCount: row?.cnt ?? 0 };
     })
   );

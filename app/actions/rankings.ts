@@ -49,7 +49,8 @@ async function getMarksByPlayer(range: { from?: string; to?: string }, onlyActiv
     })
     .from(results)
     .innerJoin(events, eq(results.eventId, events.id))
-    .innerJoin(players, eq(results.playerId, players.id));
+    .innerJoin(players, eq(results.playerId, players.id))
+    .where(eq(results.status, "approved"));
 
   return allResults.filter((r) => {
     if (onlyActive && !r.active) return false;

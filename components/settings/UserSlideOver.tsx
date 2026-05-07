@@ -7,45 +7,56 @@ import { z } from "zod";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createUser, updateUser, type UserRow } from "@/app/actions/users";
+import type { SportRow } from "@/app/actions/sports";
 
-const ROLES = ["admin", "editor", "viewer"] as const;
+const ROLES = ["super_admin", "sport_admin", "viewer"] as const;
 
 const ROLE_INFO: Record<typeof ROLES[number], { label: string; desc: string }> = {
-  admin: { label: "Admin", desc: "Full access including user management" },
-  editor: { label: "Editor", desc: "Can add/edit players, events and results" },
-  viewer: { label: "Viewer", desc: "Read-only access" },
+  super_admin: { label: "Super Admin", desc: "Full access — approves results and manages all users" },
+  sport_admin: { label: "Sport Admin", desc: "Manages assigned sport(s) and submits results for approval" },
+  viewer: { label: "Viewer", desc: "Read-only access to rankings and reports" },
 };
+
+const SL_PROVINCES = [
+  "Central", "Eastern", "North Central", "North Western",
+  "Northern", "Sabaragamuwa", "Southern", "Uva", "Western",
+];
 
 const createSchema = z.object({
   username: z.string().min(3).max(50).regex(/^[a-zA-Z0-9_]+$/, "Letters, numbers, underscores only"),
   fullName: z.string().min(1, "Full name required"),
   role: z.enum(ROLES),
+  province: z.string().optional(),
   password: z.string().min(8, "Minimum 8 characters"),
+  assignedSportIds: z.array(z.string()).optional(),
 });
 
 const editSchema = z.object({
   fullName: z.string().min(1, "Full name required"),
   role: z.enum(ROLES),
+  province: z.string().optional().nullable(),
   active: z.boolean(),
   password: z.string().min(8, "Minimum 8 characters").or(z.literal("")).optional(),
+  assignedSportIds: z.array(z.string()).optional(),
 });
 
 type CreateForm = z.infer<typeof createSchema>;
 type EditForm = z.infer<typeof editSchema>;
 
 type Props =
-  | { mode: "create"; trigger: React.ReactNode }
-  | { mode: "edit"; trigger: React.ReactNode; user: UserRow };
+  | { mode: "create"; trigger: React.ReactNode; sports?: SportRow[] }
+  | { mode: "edit"; trigger: React.ReactNode; user: UserRow; sports?: SportRow[] };
 
 export default function UserSlideOver(props: Props) {
   const [open, setOpen] = useState(false);
   const router = useRouter();
   const isEdit = props.mode === "edit";
   const user = isEdit ? props.user : null;
+  const sports = props.sports ?? [];
 
   const createForm = useForm<CreateForm>({
     resolver: zodResolver(createSchema),
-    defaultValues: { username: "", fullName: "", role: "viewer", password: "" },
+    defaultValues: { username: "", fullName: "", role: "viewer", province: "", password: "", assignedSportIds: [] },
   });
 
   const editForm = useForm<EditForm>({
@@ -53,8 +64,10 @@ export default function UserSlideOver(props: Props) {
     defaultValues: {
       fullName: user?.fullName ?? "",
       role: (user?.role as typeof ROLES[number]) ?? "viewer",
+      province: user?.province ?? "",
       active: Boolean(user?.active),
       password: "",
+      assignedSportIds: user?.assignedSportIds ?? [],
     },
   });
 
@@ -63,8 +76,10 @@ export default function UserSlideOver(props: Props) {
       editForm.reset({
         fullName: user.fullName,
         role: user.role as typeof ROLES[number],
+        province: user.province ?? "",
         active: Boolean(user.active),
         password: "",
+        assignedSportIds: user.assignedSportIds ?? [],
       });
     }
     setOpen(true);
@@ -90,6 +105,34 @@ export default function UserSlideOver(props: Props) {
 
   const inputCls = "w-full px-3.5 py-2.5 rounded-xl border border-purple-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand";
   const errorCls = "text-xs text-red-500 mt-1";
+
+  function SportMultiSelect({ value, onChange }: { value: string[]; onChange: (v: string[]) => void }) {
+    function toggle(id: string) {
+      onChange(value.includes(id) ? value.filter(x => x !== id) : [...value, id]);
+    }
+    return (
+      <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
+        {sports.length === 0 ? (
+          <p className="text-xs text-text-grey italic">No sports configured yet</p>
+        ) : (
+          sports.filter(s => Boolean(s.active)).map(s => (
+            <label key={s.id} className="flex items-center gap-2.5 p-2 rounded-lg border border-purple-100 hover:border-brand/40 cursor-pointer has-[:checked]:border-brand has-[:checked]:bg-brand-bg/40 transition-colors">
+              <input
+                type="checkbox"
+                checked={value.includes(s.id)}
+                onChange={() => toggle(s.id)}
+                className="accent-brand"
+              />
+              <span className="text-sm text-text-dark">{s.name}</span>
+            </label>
+          ))
+        )}
+      </div>
+    );
+  }
+
+  const createRole = createForm.watch("role");
+  const editRole = editForm.watch("role");
 
   return (
     <>
@@ -127,6 +170,13 @@ export default function UserSlideOver(props: Props) {
                     {createForm.formState.errors.fullName && <p className={errorCls}>{createForm.formState.errors.fullName.message}</p>}
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-text-dark mb-1.5">Province</label>
+                    <select {...createForm.register("province")} className={inputCls}>
+                      <option value="">— Not specified —</option>
+                      {SL_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-text-dark mb-1.5">Role</label>
                     <div className="space-y-2">
                       {ROLES.map((role) => (
@@ -140,6 +190,15 @@ export default function UserSlideOver(props: Props) {
                       ))}
                     </div>
                   </div>
+                  {createRole === "sport_admin" && (
+                    <div>
+                      <label className="block text-sm font-medium text-text-dark mb-1.5">Assigned Sports</label>
+                      <SportMultiSelect
+                        value={createForm.watch("assignedSportIds") ?? []}
+                        onChange={v => createForm.setValue("assignedSportIds", v)}
+                      />
+                    </div>
+                  )}
                   <div>
                     <label className="block text-sm font-medium text-text-dark mb-1.5">Password</label>
                     <input {...createForm.register("password")} type="password" placeholder="Minimum 8 characters" className={inputCls} />
@@ -167,6 +226,13 @@ export default function UserSlideOver(props: Props) {
                     {editForm.formState.errors.fullName && <p className={errorCls}>{editForm.formState.errors.fullName.message}</p>}
                   </div>
                   <div>
+                    <label className="block text-sm font-medium text-text-dark mb-1.5">Province</label>
+                    <select {...editForm.register("province")} className={inputCls}>
+                      <option value="">— Not specified —</option>
+                      {SL_PROVINCES.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div>
                     <label className="block text-sm font-medium text-text-dark mb-1.5">Role</label>
                     <div className="space-y-2">
                       {ROLES.map((role) => (
@@ -180,6 +246,15 @@ export default function UserSlideOver(props: Props) {
                       ))}
                     </div>
                   </div>
+                  {editRole === "sport_admin" && (
+                    <div>
+                      <label className="block text-sm font-medium text-text-dark mb-1.5">Assigned Sports</label>
+                      <SportMultiSelect
+                        value={editForm.watch("assignedSportIds") ?? []}
+                        onChange={v => editForm.setValue("assignedSportIds", v)}
+                      />
+                    </div>
+                  )}
                   <div className="flex items-center justify-between p-3 rounded-xl bg-brand-bg/50 border border-purple-100">
                     <div>
                       <p className="text-sm font-medium text-text-dark">Active</p>

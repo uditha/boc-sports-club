@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { isSuperAdmin } from "@/lib/auth-helpers";
 import { requireUser } from "@/lib/auth-helpers";
 import { getUsers, type UserRow } from "@/app/actions/users";
 import { getSports, getDisciplinesForSport, type SportRow, type DisciplineRow } from "@/app/actions/sports";
@@ -13,16 +14,26 @@ interface PageProps {
 }
 
 const ROLE_STYLES: Record<string, string> = {
+  super_admin: "bg-brand/10 text-brand border-brand/20",
   admin: "bg-brand/10 text-brand border-brand/20",
+  sport_admin: "bg-teal-50 text-teal-700 border-teal-200",
   editor: "bg-teal-50 text-teal-700 border-teal-200",
   viewer: "bg-gray-100 text-text-grey border-gray-200",
+};
+
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "Super Admin",
+  admin: "Super Admin",
+  sport_admin: "Sport Admin",
+  editor: "Sport Admin",
+  viewer: "Viewer",
 };
 
 export default async function SettingsPage({ searchParams }: PageProps) {
   const session = await requireUser();
   const { tab } = await searchParams;
-  const role = (session.user as { role?: string }).role;
-  const isAdmin = role === "admin";
+  const role = (session.user as { role?: string }).role ?? "";
+  const isAdmin = isSuperAdmin(role);
 
   const validTabs = isAdmin ? ["users", "sports", "categories", "account"] : ["account"];
   const activeTab = tab && validTabs.includes(tab) ? tab : (isAdmin ? "users" : "account");
@@ -32,9 +43,11 @@ export default async function SettingsPage({ searchParams }: PageProps) {
   let disciplinesBySport: Record<string, DisciplineRow[]> = {};
   let ageCategoryList: AgeCategoryRow[] = [];
 
+  if (isAdmin && (activeTab === "users" || activeTab === "sports")) {
+    sportsList = await getSports();
+  }
   if (isAdmin && activeTab === "users") userList = await getUsers();
   if (isAdmin && activeTab === "sports") {
-    sportsList = await getSports();
     const disciplineResults = await Promise.all(
       sportsList.map((s) => getDisciplinesForSport(s.id).then((d) => [s.id, d] as const))
     );
@@ -78,6 +91,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
             <p className="text-sm text-text-grey">{userList.length} user{userList.length !== 1 ? "s" : ""}</p>
             <UserSlideOver
               mode="create"
+              sports={sportsList}
               trigger={
                 <button className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white text-sm font-semibold rounded-xl transition-colors">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,6 +110,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
                   <th className="text-left py-3 px-5 text-text-grey font-medium">Name</th>
                   <th className="text-left py-3 px-4 text-text-grey font-medium hidden sm:table-cell">Username</th>
                   <th className="text-left py-3 px-4 text-text-grey font-medium">Role</th>
+                  <th className="text-left py-3 px-4 text-text-grey font-medium hidden md:table-cell">Province</th>
                   <th className="text-left py-3 px-4 text-text-grey font-medium hidden md:table-cell">Status</th>
                   <th className="py-3 px-5" />
                 </tr>
@@ -108,9 +123,12 @@ export default async function SettingsPage({ searchParams }: PageProps) {
                     </td>
                     <td className="py-3 px-4 text-text-grey hidden sm:table-cell">{user.username}</td>
                     <td className="py-3 px-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border capitalize ${ROLE_STYLES[user.role] ?? "bg-gray-100 text-text-grey border-gray-200"}`}>
-                        {user.role}
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${ROLE_STYLES[user.role] ?? "bg-gray-100 text-text-grey border-gray-200"}`}>
+                        {ROLE_LABELS[user.role] ?? user.role}
                       </span>
+                    </td>
+                    <td className="py-3 px-4 text-text-grey text-xs hidden md:table-cell">
+                      {user.province ?? "—"}
                     </td>
                     <td className="py-3 px-4 hidden md:table-cell">
                       {Boolean(user.active) ? (
@@ -129,6 +147,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
                       <UserSlideOver
                         mode="edit"
                         user={user}
+                        sports={sportsList}
                         trigger={
                           <button className="text-xs text-brand hover:text-brand-dark font-medium transition-colors">
                             Edit

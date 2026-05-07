@@ -2,7 +2,7 @@
 
 import { getDb } from "@/db";
 import { results, events } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and } from "drizzle-orm";
 import { requireUser } from "@/lib/auth-helpers";
 
 export async function getPlayerHistory(playerId: string, year?: number) {
@@ -26,7 +26,7 @@ export async function getPlayerHistory(playerId: string, year?: number) {
     })
     .from(results)
     .innerJoin(events, eq(results.eventId, events.id))
-    .where(eq(results.playerId, playerId))
+    .where(and(eq(results.playerId, playerId), eq(results.status, "approved")))
     .orderBy(desc(events.eventDate));
 
   if (year) return rows.filter((r) => r.eventYear === year);

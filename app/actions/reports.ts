@@ -60,22 +60,22 @@ export async function getAnnualReportData(year: number): Promise<AnnualReportDat
       .from(results)
       .innerJoin(players, eq(results.playerId, players.id))
       .innerJoin(events, eq(results.eventId, events.id))
-      .where(and(eq(events.year, year)))
+      .where(and(eq(events.year, year), eq(results.status, "approved")))
       .orderBy(events.eventDate),
-    // Summary counts for the year
+    // Summary counts for the year (approved only)
     db.select({
       cnt: count(),
       totalMarks: sum(results.marksAwarded),
     })
       .from(results)
       .innerJoin(events, eq(results.eventId, events.id))
-      .where(eq(events.year, year)),
+      .where(and(eq(events.year, year), eq(results.status, "approved"))),
   ]);
 
-  // Result counts per event
+  // Result counts per event (approved only)
   const yearEvents = await Promise.all(
     yearEventsRaw.map(async (e) => {
-      const [row] = await db.select({ cnt: count() }).from(results).where(eq(results.eventId, e.id));
+      const [row] = await db.select({ cnt: count() }).from(results).where(and(eq(results.eventId, e.id), eq(results.status, "approved")));
       return {
         ...e,
         typeLabel: EVENT_TYPE_LABELS[e.type as EventType] ?? e.type,
@@ -104,7 +104,7 @@ export async function getAnnualReportData(year: number): Promise<AnnualReportDat
     .selectDistinct({ playerId: results.playerId })
     .from(results)
     .innerJoin(events, eq(results.eventId, events.id))
-    .where(eq(events.year, year));
+    .where(and(eq(events.year, year), eq(results.status, "approved")));
 
   const yearSummary = yearResultsRaw[0];
 

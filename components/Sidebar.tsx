@@ -3,7 +3,15 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 
-const navItems = [
+type NavItem = {
+  href: string;
+  label: string;
+  icon: React.ReactNode;
+  badge?: number;
+  adminOnly?: boolean;
+};
+
+const baseNavItems: NavItem[] = [
   {
     href: "/dashboard",
     label: "Dashboard",
@@ -55,6 +63,17 @@ const navItems = [
     ),
   },
   {
+    href: "/approvals",
+    label: "Approvals",
+    adminOnly: true,
+    icon: (
+      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2}
+          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    ),
+  },
+  {
     href: "/imports",
     label: "Imports",
     icon: (
@@ -88,8 +107,25 @@ const navItems = [
   },
 ];
 
-export default function Sidebar() {
+interface SidebarProps {
+  userRole?: string;
+  pendingCount?: number;
+}
+
+function isAdmin(role: string) {
+  return role === "super_admin" || role === "admin";
+}
+
+export default function Sidebar({ userRole = "", pendingCount = 0 }: SidebarProps) {
   const pathname = usePathname();
+
+  const navItems = baseNavItems
+    .filter(item => !item.adminOnly || isAdmin(userRole))
+    .map(item =>
+      item.href === "/approvals" && pendingCount > 0
+        ? { ...item, badge: pendingCount }
+        : item
+    );
 
   return (
     <aside className="fixed left-0 top-0 h-full w-60 bg-white border-r border-purple-100 flex flex-col z-30">
@@ -122,7 +158,12 @@ export default function Sidebar() {
               }`}
             >
               {item.icon}
-              {item.label}
+              <span className="flex-1">{item.label}</span>
+              {item.badge != null && item.badge > 0 && (
+                <span className={`inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-xs font-bold ${isActive ? "bg-white/25 text-white" : "bg-amber-100 text-amber-700"}`}>
+                  {item.badge > 99 ? "99+" : item.badge}
+                </span>
+              )}
             </Link>
           );
         })}
