@@ -2,14 +2,34 @@ import Link from "next/link";
 import { requireUser } from "@/lib/auth-helpers";
 import { getDashboardStats } from "@/app/actions/dashboard";
 import { EVENT_TYPE_LABELS, type EventType } from "@/lib/marks";
+import MonthlyMarksChart from "@/components/dashboard/MonthlyMarksChart";
+import EventTypeDonut from "@/components/dashboard/EventTypeDonut";
 
-const TYPE_COLORS: Record<string, string> = {
-  inter_province: "bg-brand/10 text-brand-dark border-brand/20",
-  nationalized: "bg-teal-50 text-teal-700 border-teal-200",
-  coaching_camp: "bg-blue-50 text-blue-700 border-blue-200",
-  local: "bg-lavender-50 text-brand-lavender border-brand-lavender/30",
-  international: "bg-pink-50 text-brand-pink border-pink-200",
+const PLACE_LABELS: Record<string, string> = {
+  "1": "1st",
+  "2": "2nd",
+  "3": "3rd",
+  participated: "participated",
 };
+
+const PLACE_COLORS: Record<string, string> = {
+  "1": "bg-amber-100 text-amber-700",
+  "2": "bg-slate-100 text-slate-600",
+  "3": "bg-orange-100 text-orange-700",
+  participated: "bg-brand-bg text-brand",
+};
+
+function PlayerInitials({ name }: { name: string }) {
+  const parts = name.trim().split(" ");
+  const initials = parts.length >= 2
+    ? (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    : name.slice(0, 2).toUpperCase();
+  return (
+    <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-brand to-brand-lavender flex items-center justify-center text-white text-xs font-bold shrink-0">
+      {initials}
+    </div>
+  );
+}
 
 export default async function DashboardPage() {
   await requireUser();
@@ -24,7 +44,7 @@ export default async function DashboardPage() {
         <p className="text-text-grey mt-0.5">BOC Sports Society — at a glance</p>
       </div>
 
-      {/* Summary cards */}
+      {/* Metric cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         <div className="bg-gradient-to-br from-brand to-brand-lavender rounded-2xl p-5 text-white">
           <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mb-3">
@@ -45,29 +65,61 @@ export default async function DashboardPage() {
           </div>
           <p className="text-3xl font-bold">{stats.totalEvents}</p>
           <p className="text-sm font-medium mt-0.5">Total Events</p>
-          <p className="text-xs opacity-70 mt-0.5">All time</p>
+          <p className="text-xs opacity-70 mt-0.5">{stats.totalResults} results recorded</p>
         </div>
 
         <div className="bg-gradient-to-br from-brand-blue to-brand-lavender rounded-2xl p-5 text-white">
           <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mb-3">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          </div>
-          <p className="text-3xl font-bold">{stats.totalResults}</p>
-          <p className="text-sm font-medium mt-0.5">Total Results</p>
-          <p className="text-xs opacity-70 mt-0.5">Across all events</p>
-        </div>
-
-        <div className="bg-gradient-to-br from-brand-pink to-rose-500 rounded-2xl p-5 text-white">
-          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mb-3">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
             </svg>
           </div>
           <p className="text-3xl font-bold">{stats.totalMarks}</p>
           <p className="text-sm font-medium mt-0.5">Marks Awarded</p>
           <p className="text-xs opacity-70 mt-0.5">All time total</p>
+        </div>
+
+        {/* Top Performer card */}
+        <div className="bg-gradient-to-br from-amber-400 to-orange-500 rounded-2xl p-5 text-white">
+          <div className="w-9 h-9 rounded-xl bg-white/20 flex items-center justify-center mb-3">
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z" />
+            </svg>
+          </div>
+          {stats.topPerformer ? (
+            <>
+              <p className="text-xl font-bold leading-tight line-clamp-1">{stats.topPerformer.playerName}</p>
+              <p className="text-sm font-medium mt-0.5">Top Performer</p>
+              <p className="text-xs opacity-80 mt-0.5">{stats.topPerformer.totalMarks} marks lifetime</p>
+            </>
+          ) : (
+            <>
+              <p className="text-3xl font-bold">—</p>
+              <p className="text-sm font-medium mt-0.5">Top Performer</p>
+              <p className="text-xs opacity-70 mt-0.5">No results yet</p>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Charts row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-purple-100 p-5">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="font-semibold text-text-dark text-sm">Marks This Year</h2>
+              <p className="text-xs text-text-grey mt-0.5">Monthly marks awarded — {new Date().getFullYear()}</p>
+            </div>
+          </div>
+          <MonthlyMarksChart data={stats.monthlyMarks} />
+        </div>
+
+        <div className="bg-white rounded-2xl border border-purple-100 p-5">
+          <div className="mb-1">
+            <h2 className="font-semibold text-text-dark text-sm">Events by Type</h2>
+            <p className="text-xs text-text-grey mt-0.5">All time breakdown</p>
+          </div>
+          <EventTypeDonut data={stats.eventTypeBreakdown} />
         </div>
       </div>
 
@@ -123,7 +175,6 @@ export default async function DashboardPage() {
 
         {/* Breakdown panel */}
         <div className="space-y-4">
-          {/* Gender split */}
           <div className="bg-white rounded-2xl border border-purple-100 p-5">
             <h3 className="text-sm font-semibold text-text-dark mb-4">Gender Split</h3>
             <div className="space-y-3">
@@ -154,7 +205,6 @@ export default async function DashboardPage() {
             </div>
           </div>
 
-          {/* Sports */}
           <div className="bg-white rounded-2xl border border-purple-100 p-5">
             <h3 className="text-sm font-semibold text-text-dark mb-4">Sports</h3>
             {stats.sportBreakdown.length === 0 ? (
@@ -181,53 +231,47 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      {/* Recent events */}
+      {/* Recent Results feed */}
       <div className="bg-white rounded-2xl border border-purple-100 overflow-hidden">
         <div className="px-5 py-4 border-b border-purple-100 flex items-center justify-between">
-          <h2 className="font-semibold text-text-dark">Recent Events</h2>
+          <h2 className="font-semibold text-text-dark">Recent Results</h2>
           <Link href="/events" className="text-xs text-brand hover:text-brand-dark font-medium transition-colors">
             All Events →
           </Link>
         </div>
-        {stats.recentEvents.length === 0 ? (
-          <div className="text-center py-10 text-text-grey text-sm">No events yet</div>
+        {stats.recentResults.length === 0 ? (
+          <div className="text-center py-10 text-text-grey text-sm">No results recorded yet</div>
         ) : (
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-purple-50">
-                <th className="text-left py-3 px-5 text-text-grey font-medium">Event</th>
-                <th className="text-left py-3 px-4 text-text-grey font-medium">Type</th>
-                <th className="text-left py-3 px-4 text-text-grey font-medium hidden sm:table-cell">Date</th>
-                <th className="text-right py-3 px-5 text-text-grey font-medium">Results</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stats.recentEvents.map((event) => (
-                <tr key={event.id} className="border-b border-purple-50 last:border-0 hover:bg-brand-bg/40 transition-colors">
-                  <td className="py-3 px-5">
-                    <Link href={`/events/${event.id}`} className="font-medium text-text-dark hover:text-brand transition-colors">
-                      {event.name}
+          <div className="divide-y divide-purple-50">
+            {stats.recentResults.map((r) => (
+              <div key={`${r.playerId}-${r.eventId}`} className="flex items-center gap-3 px-5 py-3 hover:bg-brand-bg/40 transition-colors">
+                <PlayerInitials name={r.playerName} />
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-text-dark">
+                    <Link href={`/players/${r.playerId}`} className="font-semibold hover:text-brand transition-colors">
+                      {r.playerName}
                     </Link>
-                  </td>
-                  <td className="py-3 px-4">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${TYPE_COLORS[event.type] ?? "bg-gray-100 text-text-grey border-gray-200"}`}>
-                      {EVENT_TYPE_LABELS[event.type as EventType] ?? event.type}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-text-grey hidden sm:table-cell">
-                    {new Date(event.eventDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
-                  </td>
-                  <td className="py-3 px-5 text-right">
-                    <span className="inline-flex items-center justify-center w-7 h-7 rounded-lg bg-brand-bg text-brand text-xs font-bold">
-                      {event.resultCount}
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+                    <span className="text-text-grey"> {r.place === "participated" ? "participated in" : `placed ${PLACE_LABELS[r.place]} at`} </span>
+                    <Link href={`/events/${r.eventId}`} className="font-medium hover:text-brand transition-colors">
+                      {r.eventName}
+                    </Link>
+                  </p>
+                  <p className="text-xs text-text-grey mt-0.5">
+                    {new Date(r.eventDate).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric" })}
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${PLACE_COLORS[r.place] ?? "bg-brand-bg text-brand"}`}>
+                    {PLACE_LABELS[r.place]}
+                  </span>
+                  <span className="text-sm font-bold text-brand whitespace-nowrap">{r.marks} pts</span>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
+
     </div>
   );
 }
