@@ -52,7 +52,8 @@ export default function ExportButtons({ rows, period }: Props) {
       const { createElement } = await import("react");
       const { RankingsPdfDoc } = await import("./RankingsPdfDoc");
 
-      const blob = await pdf(createElement(RankingsPdfDoc, { rows, period })).toBlob();
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const blob = await pdf(createElement(RankingsPdfDoc, { rows, period }) as any).toBlob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
