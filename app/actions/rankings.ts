@@ -32,7 +32,7 @@ function getPreviousPeriodRange(period: Period): { from?: string; to?: string } 
   return {};
 }
 
-async function getMarksByPlayer(range: { from?: string; to?: string }, onlyActive: boolean, sport?: string, gender?: string) {
+async function getMarksByPlayer(range: { from?: string; to?: string }, onlyActive: boolean, sport?: string, gender?: string, allowedSports?: string[]) {
   const db = getDb();
 
   const allResults = await db
@@ -59,7 +59,8 @@ async function getMarksByPlayer(range: { from?: string; to?: string }, onlyActiv
       const effectiveGender = r.resultGender ?? r.playerGender;
       if (effectiveGender !== gender) return false;
     }
-    if (sport && !r.sport.includes(sport)) return false;
+    if (allowedSports?.length && !allowedSports.some(s => r.sport.includes(s))) return false;
+    if (!allowedSports?.length && sport && !r.sport.includes(sport)) return false;
     if (range.from && r.eventDate < range.from) return false;
     if (range.to && r.eventDate > range.to) return false;
     return true;
@@ -84,6 +85,7 @@ export async function getRankings(opts: {
   gender?: string;
   activeOnly: boolean;
   topN?: number;
+  allowedSports?: string[];
 }): Promise<RankingRow[]> {
   await requireUser();
 
@@ -91,8 +93,8 @@ export async function getRankings(opts: {
   const prevRange = getPreviousPeriodRange(opts.period);
 
   const [currentRows, prevRows] = await Promise.all([
-    getMarksByPlayer(range, opts.activeOnly, opts.sport, opts.gender),
-    getMarksByPlayer(prevRange, opts.activeOnly, opts.sport, opts.gender),
+    getMarksByPlayer(range, opts.activeOnly, opts.sport, opts.gender, opts.allowedSports),
+    getMarksByPlayer(prevRange, opts.activeOnly, opts.sport, opts.gender, opts.allowedSports),
   ]);
 
   // Aggregate current period

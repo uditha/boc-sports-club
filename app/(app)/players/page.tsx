@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getPlayers } from "@/app/actions/players";
 import PlayerSlideOver from "@/components/players/PlayerSlideOver";
 import PlayerFilters from "@/components/players/PlayerFilters";
-import { requireUser } from "@/lib/auth-helpers";
+import { requireUser, getSessionSportFilter } from "@/lib/auth-helpers";
 import { getActiveSportNames } from "@/app/actions/sports";
 
 interface PageProps {
@@ -32,10 +32,17 @@ function SportsPills({ sport }: { sport: string }) {
   );
 }
 
-async function PlayersTable({ searchParams }: { searchParams: { q?: string; sport?: string; inactive?: string } }) {
+async function PlayersTable({
+  searchParams,
+  allowedSports,
+}: {
+  searchParams: { q?: string; sport?: string; inactive?: string };
+  allowedSports: string[] | null;
+}) {
   const players = await getPlayers({
     search: searchParams.q,
-    sport: searchParams.sport,
+    sport: allowedSports ? undefined : searchParams.sport,
+    allowedSports: allowedSports ?? undefined,
     includeInactive: searchParams.inactive === "1",
   });
 
@@ -102,18 +109,29 @@ async function PlayersTable({ searchParams }: { searchParams: { q?: string; spor
 }
 
 export default async function PlayersPage({ searchParams }: PageProps) {
-  await requireUser();
-  const [params, sportNames] = await Promise.all([searchParams, getActiveSportNames()]);
+  const session = await requireUser();
+  const [params, allSportNames, sportFilter] = await Promise.all([
+    searchParams,
+    getActiveSportNames(),
+    getSessionSportFilter(session),
+  ]);
+
+  // For sport_admin: restrict sport picker and query to their assigned sports
+  const visibleSports = sportFilter ? allSportNames.filter(s => sportFilter.includes(s)) : allSportNames;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-text-dark">Players</h1>
-          <p className="text-text-grey mt-0.5">Manage all registered athletes</p>
+          <p className="text-text-grey mt-0.5">
+            {sportFilter
+              ? `Athletes in: ${sportFilter.join(", ")}`
+              : "Manage all registered athletes"}
+          </p>
         </div>
         <PlayerSlideOver
-          sports={sportNames}
+          sports={visibleSports}
           trigger={
             <button className="flex items-center gap-2 px-4 py-2.5 bg-brand hover:bg-brand-dark text-white text-sm font-semibold rounded-xl transition-colors cursor-pointer">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -126,12 +144,12 @@ export default async function PlayersPage({ searchParams }: PageProps) {
       </div>
 
       <Suspense>
-        <PlayerFilters sports={sportNames} />
+        <PlayerFilters sports={visibleSports} />
       </Suspense>
 
       <div className="bg-white rounded-2xl border border-purple-100 overflow-hidden">
         <Suspense fallback={<div className="py-16 text-center text-text-grey text-sm">Loading players…</div>}>
-          <PlayersTable searchParams={params} />
+          <PlayersTable searchParams={params} allowedSports={sportFilter} />
         </Suspense>
       </div>
     </div>

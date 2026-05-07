@@ -117,12 +117,13 @@ export async function togglePlayerActive(id: string) {
 export async function getPlayers(opts?: {
   search?: string;
   sport?: string;
+  // allowedSports: enforced for sport_admin — if set, player must match at least one
+  allowedSports?: string[];
   includeInactive?: boolean;
 }) {
   await requireUser();
   const db = getDb();
 
-  // Build SQL-level filters — much faster than fetching all and filtering in JS
   const conditions = [];
 
   if (!opts?.includeInactive) {
@@ -140,8 +141,12 @@ export async function getPlayers(opts?: {
     );
   }
 
-  // sport is stored as comma-separated so we use LIKE for filtering
-  if (opts?.sport) {
+  // sport is stored as comma-separated; allowedSports overrides the single sport filter
+  if (opts?.allowedSports?.length) {
+    // Player must match at least one of the allowed sports
+    const sportClauses = opts.allowedSports.map(s => like(players.sport, `%${s}%`));
+    conditions.push(or(...sportClauses)!);
+  } else if (opts?.sport) {
     conditions.push(like(players.sport, `%${opts.sport}%`));
   }
 
