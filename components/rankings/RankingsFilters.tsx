@@ -79,7 +79,7 @@ export default function RankingsFilters({ sports }: { sports: string[] }) {
         <label className="flex items-center gap-2 text-sm text-text-grey cursor-pointer select-none">
           <input
             type="checkbox"
-            defaultChecked={searchParams.get("all") !== "1"}
+            checked={searchParams.get("all") !== "1"}
             onChange={(e) => update("all", e.target.checked ? "" : "1")}
             className="w-4 h-4 rounded accent-brand"
           />

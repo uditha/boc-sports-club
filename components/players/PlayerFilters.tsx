@@ -1,26 +1,45 @@
 "use client";
 
 import { useRouter, usePathname, useSearchParams } from "next/navigation";
-import { useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
 
 export default function PlayerFilters({ sports }: { sports: string[] }) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
+  // Controlled local state for the search box — debounced before pushing to URL
+  const [searchValue, setSearchValue] = useState(searchParams.get("q") ?? "");
+
+  // Keep local value in sync if the URL changes externally (e.g. back/forward)
+  useEffect(() => {
+    setSearchValue(searchParams.get("q") ?? "");
+  }, [searchParams]);
+
   const updateParam = useCallback(
     (key: string, value: string) => {
       const params = new URLSearchParams(searchParams.toString());
-      if (value && value !== "All Sports") {
+      if (value) {
         params.set(key, value);
       } else {
         params.delete(key);
       }
-      params.delete("page");
       router.push(`${pathname}?${params.toString()}`);
     },
     [router, pathname, searchParams]
   );
+
+  // Debounce: only push search to URL 350ms after the user stops typing
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      const current = searchParams.get("q") ?? "";
+      if (searchValue !== current) {
+        updateParam("q", searchValue);
+      }
+    }, 350);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchValue]);
 
   return (
     <div className="flex flex-wrap gap-3 items-center">
@@ -31,16 +50,26 @@ export default function PlayerFilters({ sports }: { sports: string[] }) {
         </svg>
         <input
           type="text"
-          defaultValue={searchParams.get("q") ?? ""}
-          onChange={(e) => updateParam("q", e.target.value)}
+          value={searchValue}
+          onChange={(e) => setSearchValue(e.target.value)}
           placeholder="Search by name, ID, branch…"
           className="w-full pl-9 pr-4 py-2 text-sm rounded-xl border border-purple-200 bg-white focus:outline-none focus:ring-2 focus:ring-brand"
         />
+        {searchValue && (
+          <button
+            onClick={() => setSearchValue("")}
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-text-grey hover:text-text-dark"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        )}
       </div>
 
       {/* Sport filter */}
       <select
-        defaultValue={searchParams.get("sport") ?? ""}
+        value={searchParams.get("sport") ?? ""}
         onChange={(e) => updateParam("sport", e.target.value)}
         className="px-3 py-2 text-sm rounded-xl border border-purple-200 bg-white focus:outline-none focus:ring-2 focus:ring-brand text-text-dark"
       >
@@ -52,7 +81,7 @@ export default function PlayerFilters({ sports }: { sports: string[] }) {
       <label className="flex items-center gap-2 text-sm text-text-grey cursor-pointer select-none">
         <input
           type="checkbox"
-          defaultChecked={searchParams.get("inactive") === "1"}
+          checked={searchParams.get("inactive") === "1"}
           onChange={(e) => updateParam("inactive", e.target.checked ? "1" : "")}
           className="w-4 h-4 rounded accent-brand"
         />
