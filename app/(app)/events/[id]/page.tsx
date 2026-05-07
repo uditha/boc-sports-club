@@ -48,7 +48,7 @@ export default async function EventDetailPage({ params }: PageProps) {
   const availablePlayers = allPlayers.filter((p) => !enteredPlayerIds.has(p.id));
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl mx-auto">
       {/* Back */}
       <Link href="/events" className="inline-flex items-center gap-1.5 text-sm text-text-grey hover:text-brand transition-colors">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -113,7 +113,7 @@ export default async function PlayerDetailPage({ params }: PageProps) {
   if (!player) notFound();
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <Link href="/players" className="inline-flex items-center gap-1.5 text-sm text-text-grey hover:text-brand transition-colors">
         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />

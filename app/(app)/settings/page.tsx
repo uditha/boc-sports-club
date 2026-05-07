@@ -43,7 +43,7 @@ export default async function SettingsPage({ searchParams }: PageProps) {
   if (isAdmin && activeTab === "categories") ageCategoryList = await getAgeCategories();
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 max-w-4xl mx-auto">
       <div>
         <h1 className="text-2xl font-bold text-text-dark">Settings</h1>
         <p className="text-text-grey mt-0.5">Manage users, roles, and your account</p>
