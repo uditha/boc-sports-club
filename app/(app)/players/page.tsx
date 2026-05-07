@@ -3,7 +3,7 @@ import Link from "next/link";
 import { getPlayers } from "@/app/actions/players";
 import PlayerSlideOver from "@/components/players/PlayerSlideOver";
 import PlayerFilters from "@/components/players/PlayerFilters";
-import { requireUser, getSessionSportFilter } from "@/lib/auth-helpers";
+import { requireUser, getMyAllowedSports } from "@/lib/auth-helpers";
 import { getActiveSportNames } from "@/app/actions/sports";
 
 interface PageProps {
@@ -109,11 +109,11 @@ async function PlayersTable({
 }
 
 export default async function PlayersPage({ searchParams }: PageProps) {
-  const session = await requireUser();
+  await requireUser();
   const [params, allSportNames, sportFilter] = await Promise.all([
     searchParams,
     getActiveSportNames(),
-    getSessionSportFilter(session),
+    getMyAllowedSports(),
   ]);
 
   // For sport_admin: restrict sport picker and query to their assigned sports

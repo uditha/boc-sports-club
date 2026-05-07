@@ -1,6 +1,6 @@
 import { Suspense } from "react";
 import { getRankings, type Period } from "@/app/actions/rankings";
-import { requireUser, getSessionSportFilter } from "@/lib/auth-helpers";
+import { requireUser, getMyAllowedSports } from "@/lib/auth-helpers";
 import RankingsFilters from "@/components/rankings/RankingsFilters";
 import { getActiveSportNames } from "@/app/actions/sports";
 import RankingsTable from "@/components/rankings/RankingsTable";
@@ -47,11 +47,11 @@ async function RankingsContent({
 }
 
 export default async function RankingsPage({ searchParams }: PageProps) {
-  const session = await requireUser();
+  await requireUser();
   const [params, allSportNames, sportFilter] = await Promise.all([
     searchParams,
     getActiveSportNames(),
-    getSessionSportFilter(session),
+    getMyAllowedSports(),
   ]);
 
   // For sport_admin: restrict sport picker to their assigned sports

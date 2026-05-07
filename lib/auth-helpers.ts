@@ -82,6 +82,13 @@ export async function getSessionSportIdFilter(session: Awaited<ReturnType<typeof
   return assignments.map(a => a.sportId);
 }
 
+// Call this from server pages — avoids the session type-passing issue
+export async function getMyAllowedSports(): Promise<string[] | null> {
+  const session = await auth();
+  if (!session?.user) return [];
+  return getSessionSportFilter(session);
+}
+
 export async function getPendingResultsCount(): Promise<number> {
   const session = await auth();
   if (!session?.user) return 0;

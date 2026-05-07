@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { requireUser } from "@/lib/auth-helpers";
+import { requireUser, getMyAllowedSports } from "@/lib/auth-helpers";
 import { getDashboardStats } from "@/app/actions/dashboard";
 import { EVENT_TYPE_LABELS, type EventType } from "@/lib/marks";
 import MonthlyMarksChart from "@/components/dashboard/MonthlyMarksChart";
@@ -33,7 +33,8 @@ function PlayerInitials({ name }: { name: string }) {
 
 export default async function DashboardPage() {
   await requireUser();
-  const stats = await getDashboardStats();
+  const sportFilter = await getMyAllowedSports();
+  const stats = await getDashboardStats(sportFilter ?? undefined);
 
   const maxSportCount = Math.max(...stats.sportBreakdown.map(s => s.count), 1);
 
