@@ -95,4 +95,22 @@ export async function getRecentlyReviewedResults(limit = 20) {
     .limit(limit);
 }
 
+export async function approveAllResults(resultIds: string[]) {
+  await requireAdmin();
+  if (!resultIds.length) return { success: true };
+  const db = getDb();
+  const now = new Date().toISOString();
+  // Update all at once — no need for per-row audit here (bulk action is visible in approvals log)
+  for (const id of resultIds) {
+    await db
+      .update(results)
+      .set({ status: "approved", reviewedAt: now })
+      .where(and(eq(results.id, id), eq(results.status, "pending")));
+  }
+  revalidatePath("/approvals");
+  revalidatePath("/dashboard");
+  revalidatePath("/rankings");
+  return { success: true };
+}
+
 export { approveResult, rejectResult };

@@ -4,9 +4,34 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { approveResult, rejectResult } from "@/app/actions/results";
+import { approveAllResults } from "@/app/actions/approvals";
 
 interface Props {
   resultId: string;
+}
+
+export function ApproveAllButton({ resultIds, label }: { resultIds: string[]; label: string }) {
+  const [loading, setLoading] = useState(false);
+  const router = useRouter();
+
+  async function handle() {
+    setLoading(true);
+    const res = await approveAllResults(resultIds);
+    setLoading(false);
+    if (res && "error" in res) { toast.error("Failed to approve"); return; }
+    toast.success(`${resultIds.length} result${resultIds.length !== 1 ? "s" : ""} approved`);
+    router.refresh();
+  }
+
+  return (
+    <button
+      onClick={handle}
+      disabled={loading}
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-brand-teal/10 text-teal-700 text-xs font-semibold hover:bg-brand-teal/20 transition-colors disabled:opacity-50"
+    >
+      {loading ? "…" : `✓ Approve All ${label}`}
+    </button>
+  );
 }
 
 export function ApproveButton({ resultId }: Props) {
