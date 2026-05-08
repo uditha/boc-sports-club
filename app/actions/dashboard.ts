@@ -25,8 +25,8 @@ export type DashboardStats = {
 
 const MONTH_LABELS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 
-function sportMatches(playerSport: string, allowedSports?: string[]): boolean {
-  if (!allowedSports?.length) return true;
+function sportMatches(playerSport: string, allowedSports: string[]): boolean {
+  if (allowedSports.length === 0) return false;
   return playerSport.split(",").map(s => s.trim()).some(s => allowedSports.includes(s));
 }
 
@@ -106,8 +106,8 @@ export async function getDashboardStats(allowedSports?: string[]): Promise<Dashb
     })
   );
 
-  // Filter players by allowed sports for counts
-  const filteredPlayers = allowedSports?.length
+  // allowedSports defined → sport_admin scope (empty = no sports assigned = nothing)
+  const filteredPlayers = allowedSports !== undefined
     ? allPlayers.filter(p => sportMatches(p.sport, allowedSports))
     : allPlayers;
 
@@ -132,12 +132,12 @@ export async function getDashboardStats(allowedSports?: string[]): Promise<Dashb
 
   // Filter recent results by allowed sports and take first 8
   const filteredRecentResults = recentResultsRaw
-    .filter(r => sportMatches(r.playerSport, allowedSports))
+    .filter(r => allowedSports !== undefined ? sportMatches(r.playerSport, allowedSports) : true)
     .slice(0, 8)
     .map(({ playerSport: _ps, ...r }) => r);
 
   // Find top performer filtered by allowed sports
-  const topPerformerFiltered = allowedSports?.length
+  const topPerformerFiltered = allowedSports !== undefined
     ? topPerformerRaw.find(r => sportMatches(r.playerSport, allowedSports))
     : topPerformerRaw[0];
 

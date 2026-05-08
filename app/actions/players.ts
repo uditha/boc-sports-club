@@ -141,9 +141,11 @@ export async function getPlayers(opts?: {
     );
   }
 
-  // sport is stored as comma-separated; allowedSports overrides the single sport filter
-  if (opts?.allowedSports?.length) {
-    // Player must match at least one of the allowed sports
+  // allowedSports is defined → sport_admin scope enforced (empty array = no players visible)
+  if (opts?.allowedSports !== undefined) {
+    if (opts.allowedSports.length === 0) {
+      return []; // sport_admin with no assignments sees nothing
+    }
     const sportClauses = opts.allowedSports.map(s => like(players.sport, `%${s}%`));
     conditions.push(or(...sportClauses)!);
   } else if (opts?.sport) {

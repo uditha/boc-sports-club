@@ -59,8 +59,11 @@ async function getMarksByPlayer(range: { from?: string; to?: string }, onlyActiv
       const effectiveGender = r.resultGender ?? r.playerGender;
       if (effectiveGender !== gender) return false;
     }
-    if (allowedSports?.length && !allowedSports.some(s => r.sport.includes(s))) return false;
-    if (!allowedSports?.length && sport && !r.sport.includes(sport)) return false;
+    // allowedSports defined → sport_admin scope (empty array means nothing visible)
+    if (allowedSports !== undefined) {
+      if (allowedSports.length === 0) return false;
+      if (!allowedSports.some(s => r.sport.includes(s))) return false;
+    } else if (sport && !r.sport.includes(sport)) return false;
     if (range.from && r.eventDate < range.from) return false;
     if (range.to && r.eventDate > range.to) return false;
     return true;
