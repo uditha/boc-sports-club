@@ -82,7 +82,7 @@ export async function getDashboardStats(allowedSports?: string[]): Promise<Dashb
       .innerJoin(players, eq(results.playerId, players.id))
       .innerJoin(events, eq(results.eventId, events.id))
       .where(eq(results.status, "approved"))
-      .orderBy(desc(results.createdAt))
+      .orderBy(desc(events.eventDate), desc(results.createdAt))
       .limit(allowedSports?.length ? 50 : 8), // fetch more to compensate for JS filtering
     // Top performer — include playerSport for sport filter
     db.select({
