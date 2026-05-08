@@ -6,7 +6,11 @@ import { eq } from "drizzle-orm";
 
 export type AppRole = "super_admin" | "sport_admin" | "viewer" | "admin" | "editor";
 
-// Treat legacy "admin" as super_admin, legacy "editor" as sport_admin
+// Explicit session type — avoids depending on NextAuth's overloaded auth() return type
+export type AppSession = {
+  user?: { id?: string; name?: string | null; email?: string | null; role?: string } | null;
+} | null;
+
 export function isSuperAdmin(role: string): boolean {
   return role === "super_admin" || role === "admin";
 }
@@ -15,43 +19,44 @@ export function canEdit(role: string): boolean {
   return isSuperAdmin(role) || role === "sport_admin" || role === "editor";
 }
 
-export function getSessionUser(session: Awaited<ReturnType<typeof auth>>) {
+export function getSessionUser(session: AppSession) {
   return session?.user as { id?: string; role?: string; name?: string } | undefined;
 }
 
-async function getSession() {
-  const session = await auth();
+type AuthedSession = NonNullable<AppSession>;
+
+async function getSession(): Promise<AuthedSession> {
+  const session = (await auth()) as AppSession;
   if (!session?.user) redirect("/login");
-  return session;
+  return session as AuthedSession;
 }
 
-export async function requireUser() {
+export async function requireUser(): Promise<AuthedSession> {
   return getSession();
 }
 
-export async function requireEditor() {
+export async function requireEditor(): Promise<AuthedSession> {
   const session = await getSession();
   const role = getSessionUser(session)?.role ?? "";
   if (!canEdit(role)) redirect("/dashboard");
   return session;
 }
 
-export async function requireAdmin() {
+export async function requireAdmin(): Promise<AuthedSession> {
   const session = await getSession();
   const role = getSessionUser(session)?.role ?? "";
   if (!isSuperAdmin(role)) redirect("/dashboard");
   return session;
 }
 
-// Alias for clarity in new code
 export const requireSuperAdmin = requireAdmin;
 
-export async function requireSportAdmin() {
+export async function requireSportAdmin(): Promise<AuthedSession> {
   return requireEditor();
 }
 
-// Returns null for super_admin (no filter) or array of sport names for sport_admin
-export async function getSessionSportFilter(session: Awaited<ReturnType<typeof auth>>): Promise<string[] | null> {
+// Returns null for super_admin (no filter), array of sport names for sport_admin
+export async function getSessionSportFilter(session: AppSession): Promise<string[] | null> {
   const user = getSessionUser(session);
   if (!user?.id || !user.role) return null;
   if (isSuperAdmin(user.role)) return null;
@@ -63,12 +68,11 @@ export async function getSessionSportFilter(session: Awaited<ReturnType<typeof a
     .innerJoin(sports, eq(userSportAssignments.sportId, sports.id))
     .where(eq(userSportAssignments.userId, user.id));
 
-  // If no assignments, sport_admin sees nothing (not everything)
   return assignments.map(a => a.sportName);
 }
 
 // Returns assigned sport IDs for sport_admin, null for super_admin
-export async function getSessionSportIdFilter(session: Awaited<ReturnType<typeof auth>>): Promise<string[] | null> {
+export async function getSessionSportIdFilter(session: AppSession): Promise<string[] | null> {
   const user = getSessionUser(session);
   if (!user?.id || !user.role) return null;
   if (isSuperAdmin(user.role)) return null;
@@ -82,23 +86,22 @@ export async function getSessionSportIdFilter(session: Awaited<ReturnType<typeof
   return assignments.map(a => a.sportId);
 }
 
-// Call this from server pages — avoids the session type-passing issue
+// Call from server pages — self-contained, no session threading needed
 export async function getMyAllowedSports(): Promise<string[] | null> {
-  const session = await auth();
+  const session = (await auth()) as AppSession;
   if (!session?.user) return [];
   return getSessionSportFilter(session);
 }
 
 export async function getPendingResultsCount(): Promise<number> {
-  const session = await auth();
+  const session = (await auth()) as AppSession;
   if (!session?.user) return 0;
   const role = getSessionUser(session)?.role ?? "";
   if (!isSuperAdmin(role)) return 0;
 
-  const { getDb } = await import("@/db");
+  const db = getDb();
   const { results } = await import("@/db/schema");
   const { count, eq } = await import("drizzle-orm");
-  const db = getDb();
   const [row] = await db.select({ cnt: count() }).from(results).where(eq(results.status, "pending"));
   return row?.cnt ?? 0;
 }
