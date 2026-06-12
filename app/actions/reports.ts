@@ -1,8 +1,8 @@
 "use server";
 
 import { getDb } from "@/db";
-import { results, events, players } from "@/db/schema";
-import { eq, and, count, sum, desc } from "drizzle-orm";
+import { results, events, players, eventImages } from "@/db/schema";
+import { eq, and, count, sum, desc, asc } from "drizzle-orm";
 import { requireUser } from "@/lib/auth-helpers";
 import { getRankings, type RankingRow } from "./rankings";
 import { EVENT_TYPE_LABELS, type EventType } from "@/lib/marks";
@@ -23,6 +23,7 @@ export type AnnualReportData = {
     eventDate: string;
     location: string | null;
     resultCount: number;
+    images: { url: string; caption: string | null }[];
   }[];
   achievements: {
     playerName: string;
@@ -76,10 +77,17 @@ export async function getAnnualReportData(year: number): Promise<AnnualReportDat
   const yearEvents = await Promise.all(
     yearEventsRaw.map(async (e) => {
       const [row] = await db.select({ cnt: count() }).from(results).where(and(eq(results.eventId, e.id), eq(results.status, "approved")));
+      const imgs = await db
+        .select({ url: eventImages.url, caption: eventImages.caption })
+        .from(eventImages)
+        .where(eq(eventImages.eventId, e.id))
+        .orderBy(asc(eventImages.sortOrder), asc(eventImages.createdAt))
+        .limit(4);
       return {
         ...e,
         typeLabel: EVENT_TYPE_LABELS[e.type as EventType] ?? e.type,
         resultCount: row?.cnt ?? 0,
+        images: imgs,
       };
     })
   );

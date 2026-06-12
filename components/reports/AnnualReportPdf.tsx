@@ -1,5 +1,5 @@
 // @ts-nocheck — @react-pdf/renderer has a known JSX type conflict with React 19
-import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Font, Image } from "@react-pdf/renderer";
 import type { AnnualReportData } from "@/app/actions/reports";
 
 Font.registerHyphenationCallback(word => [word]);
@@ -99,6 +99,13 @@ const styles = StyleSheet.create({
   pillPurple: { backgroundColor: "#EDE9FE", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   pillTeal:   { backgroundColor: "#D1FAE5", borderRadius: 4, paddingHorizontal: 6, paddingVertical: 2 },
   pillText:   { fontSize: 8, fontFamily: "Helvetica-Bold", color: TEXT_DARK },
+
+  // ── Photo gallery ─────────────────────────────────────────────────────────
+  photoEventName: { fontSize: 10, fontFamily: "Helvetica-Bold", color: PURPLE, marginBottom: 8, marginTop: 14 },
+  photoGrid:      { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  photoCell:      { width: "48%", borderRadius: 10, overflow: "hidden", backgroundColor: BG_LIGHT },
+  photoImg:       { width: "100%", height: 130, objectFit: "cover" },
+  photoCaption:   { fontSize: 7, color: TEXT_GREY, padding: "3 6 4" },
 
   // ── Fixed footer ──────────────────────────────────────────────────────────
   footer: {
@@ -318,6 +325,39 @@ export function AnnualReportPdf({ data }: Props) {
             </View>
           </View>
           <Footer year={data.year} section="Achievements" />
+        </Page>
+      )}
+
+      {/* ── Photo Gallery page (only if any event has photos) ────────────── */}
+      {data.yearEvents.some(e => e.images.length > 0) && (
+        <Page size="A4" style={styles.page}>
+          <Banner year={data.year} section="Photo Gallery" />
+          <View style={styles.content}>
+            <View style={styles.sectionCard}>
+              <View style={styles.sectionHead}>
+                <Text style={styles.sectionTitle}>Event Photos — {data.year}</Text>
+                <Text style={styles.sectionSubtitle}>
+                  {data.yearEvents.reduce((n, e) => n + e.images.length, 0)} photo{data.yearEvents.reduce((n, e) => n + e.images.length, 0) !== 1 ? "s" : ""} across {data.yearEvents.filter(e => e.images.length > 0).length} event{data.yearEvents.filter(e => e.images.length > 0).length !== 1 ? "s" : ""}
+                </Text>
+              </View>
+              <View style={{ padding: 16 }}>
+                {data.yearEvents.filter(e => e.images.length > 0).map(e => (
+                  <View key={e.id}>
+                    <Text style={styles.photoEventName}>{e.name}</Text>
+                    <View style={styles.photoGrid}>
+                      {e.images.map((img, idx) => (
+                        <View key={idx} style={styles.photoCell}>
+                          <Image src={img.url} style={styles.photoImg} />
+                          {img.caption ? <Text style={styles.photoCaption}>{img.caption}</Text> : null}
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                ))}
+              </View>
+            </View>
+          </View>
+          <Footer year={data.year} section="Photo Gallery" />
         </Page>
       )}
 
