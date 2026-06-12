@@ -15,6 +15,8 @@ export async function getPlayerHistory(playerId: string, year?: number) {
       place: results.place,
       bestAthlete: results.bestAthlete,
       meetRecord: results.meetRecord,
+      discipline: results.discipline,
+      performance: results.performance,
       marksAwarded: results.marksAwarded,
       resultNotes: results.notes,
       eventId: events.id,

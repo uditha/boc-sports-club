@@ -12,6 +12,8 @@ import EventSlideOver from "@/components/events/EventSlideOver";
 import ResultSlideOver from "@/components/events/ResultSlideOver";
 import LockEventButton from "@/components/events/LockEventButton";
 import DeleteResultButton from "@/components/events/DeleteResultButton";
+import EventPhotos from "@/components/events/EventPhotos";
+import { getEventImages } from "@/app/actions/event-images";
 
 interface PageProps {
   params: Promise<{ id: string }>;
@@ -40,7 +42,7 @@ export default async function EventDetailPage({ params }: PageProps) {
   const isAdmin = isSuperAdmin(role);
   const isSportAdmin = !isAdmin && role === "sport_admin";
 
-  const [event, allEventResults, allPlayers, allSports, disciplinesBySport, allAgeCategories] = await Promise.all([
+  const [event, allEventResults, allPlayers, allSports, disciplinesBySport, allAgeCategories, images] = await Promise.all([
     getEventById(id),
     getResultsForEvent(id),
     // Sport_admin: only their assigned players; super_admin: all players
@@ -48,6 +50,7 @@ export default async function EventDetailPage({ params }: PageProps) {
     getActiveSportNames(),
     getAllDisciplinesBySport(),
     getActiveAgeCategoryNames(),
+    getEventImages(id),
   ]);
 
   if (!event) notFound();
@@ -102,6 +105,15 @@ export default async function EventDetailPage({ params }: PageProps) {
             <p className="text-text-grey text-sm">{EVENT_TYPE_LABELS[event.type as EventType]}</p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            <Link
+              href={`/events/${event.id}/report`}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl border border-purple-200 text-text-grey text-sm font-medium hover:bg-brand-bg transition-colors"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
+              </svg>
+              Report Book
+            </Link>
             {!event.locked && canEdit && (
               <>
                 {isAdmin && (
@@ -311,6 +323,9 @@ export default async function EventDetailPage({ params }: PageProps) {
           </table>
         )}
       </div>
+
+      {/* Photos — included in the event report book */}
+      <EventPhotos eventId={event.id} images={images} canEdit={canEdit} />
     </div>
   );
 }

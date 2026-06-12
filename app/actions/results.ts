@@ -1,12 +1,13 @@
 "use server";
 
 import { getDb } from "@/db";
-import { results, events, players, auditLog } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { results, events, players, auditLog, sports, sportDisciplines } from "@/db/schema";
+import { eq, and } from "drizzle-orm";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
 import { requireEditor, requireAdmin, isSuperAdmin, getSessionUser } from "@/lib/auth-helpers";
 import { calculateMarks, type EventType, type Place } from "@/lib/marks";
+import { parsePerformance, type PerformanceUnit } from "@/lib/performance";
 import { z } from "zod";
 
 const resultSchema = z.object({
@@ -16,7 +17,6 @@ const resultSchema = z.object({
   gender: z.enum(["M", "F"]),
   ageCategory: z.string().optional(),
   performance: z.string().optional(),
-  performanceValue: z.number().optional(),
   place: z.enum(["1", "2", "3", "participated"]),
   bestAthlete: z.boolean().default(false),
   meetRecord: z.boolean().default(false),
@@ -24,6 +24,33 @@ const resultSchema = z.object({
 });
 
 export type ResultFormData = z.infer<typeof resultSchema>;
+
+async function getDisciplineUnit(
+  sportName: string | null | undefined,
+  disciplineName: string | null | undefined
+): Promise<PerformanceUnit> {
+  if (!sportName || !disciplineName) return "none";
+  const db = getDb();
+  const [row] = await db
+    .select({ unit: sportDisciplines.performanceUnit })
+    .from(sportDisciplines)
+    .innerJoin(sports, eq(sportDisciplines.sportId, sports.id))
+    .where(and(eq(sports.name, sportName), eq(sportDisciplines.name, disciplineName)))
+    .limit(1);
+  return (row?.unit as PerformanceUnit) ?? "none";
+}
+
+// performanceValue is always derived server-side from the free-text performance,
+// interpreted in the discipline's configured unit ("none" → stays null).
+async function resolvePerformanceValue(
+  sportName: string | null | undefined,
+  disciplineName: string | null | undefined,
+  performance: string | null | undefined
+): Promise<number | null> {
+  if (!performance) return null;
+  const unit = await getDisciplineUnit(sportName, disciplineName);
+  return parsePerformance(performance, unit);
+}
 
 export async function createResult(eventId: string, data: ResultFormData) {
   const session = await requireEditor();
@@ -49,6 +76,10 @@ export async function createResult(eventId: string, data: ResultFormData) {
   const status = isSuperAdmin(role) ? "approved" : "pending";
   const id = randomUUID();
 
+  const performanceValue = await resolvePerformanceValue(
+    parsed.data.sport, parsed.data.discipline, parsed.data.performance
+  );
+
   await db.insert(results).values({
     id,
     playerId: parsed.data.playerId,
@@ -58,7 +89,7 @@ export async function createResult(eventId: string, data: ResultFormData) {
     gender: parsed.data.gender,
     ageCategory: parsed.data.ageCategory || null,
     performance: parsed.data.performance || null,
-    performanceValue: parsed.data.performanceValue ?? null,
+    performanceValue,
     place: parsed.data.place,
     bestAthlete: parsed.data.bestAthlete,
     meetRecord: parsed.data.meetRecord,
@@ -107,13 +138,17 @@ export async function updateResult(resultId: string, eventId: string, data: Resu
   // Edits by sport_admin revert an approved result back to pending
   const status = isSuperAdmin(role) ? "approved" : "pending";
 
+  const performanceValue = await resolvePerformanceValue(
+    parsed.data.sport, parsed.data.discipline, parsed.data.performance
+  );
+
   await db.update(results).set({
     sport: parsed.data.sport,
     discipline: parsed.data.discipline || null,
     gender: parsed.data.gender,
     ageCategory: parsed.data.ageCategory || null,
     performance: parsed.data.performance || null,
-    performanceValue: parsed.data.performanceValue ?? null,
+    performanceValue,
     place: parsed.data.place,
     bestAthlete: parsed.data.bestAthlete,
     meetRecord: parsed.data.meetRecord,
@@ -232,6 +267,7 @@ export type BulkEntry = {
   place: "1" | "2" | "3" | "participated";
   bestAthlete: boolean;
   meetRecord: boolean;
+  performance?: string | null;
 };
 
 export async function createBulkResults(
@@ -265,12 +301,16 @@ export async function createBulkResults(
   const skipped: string[] = [];
   let inserted = 0;
 
+  // One unit lookup for the whole batch — sport/discipline are shared
+  const performanceUnit = await getDisciplineUnit(sport, discipline);
+
   for (const entry of entries) {
     const key = `${entry.playerId}|${discipline ?? ""}|${gender}|${ageCategory ?? ""}`;
     if (existingKeys.has(key)) { skipped.push(entry.playerId); continue; }
 
     const marks = calculateMarks(event.type as EventType, entry.place as Place, entry.bestAthlete, entry.meetRecord);
     const id = randomUUID();
+    const performance = entry.performance?.trim() || null;
 
     await db.insert(results).values({
       id,
@@ -283,6 +323,8 @@ export async function createBulkResults(
       place: entry.place,
       bestAthlete: entry.bestAthlete,
       meetRecord: entry.meetRecord,
+      performance,
+      performanceValue: parsePerformance(performance, performanceUnit),
       marksAwarded: marks,
       enteredBy: user?.id ?? null,
       status,
@@ -294,7 +336,7 @@ export async function createBulkResults(
       action: "create",
       entity: "result",
       entityId: id,
-      after: JSON.stringify({ playerId: entry.playerId, eventId, sport, discipline, ageCategory, place: entry.place, marksAwarded: marks, status }),
+      after: JSON.stringify({ playerId: entry.playerId, eventId, sport, discipline, ageCategory, place: entry.place, performance: entry.performance?.trim() || null, marksAwarded: marks, status }),
     });
 
     inserted++;

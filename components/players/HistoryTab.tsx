@@ -61,6 +61,7 @@ export default function HistoryTab({ history }: Props) {
               <th className="text-left py-3 px-4 text-text-grey font-medium">Event</th>
               <th className="text-left py-3 px-4 text-text-grey font-medium">Date</th>
               <th className="text-left py-3 px-4 text-text-grey font-medium">Place</th>
+              <th className="text-left py-3 px-4 text-text-grey font-medium">Performance</th>
               <th className="text-left py-3 px-4 text-text-grey font-medium">Achievements</th>
               <th className="text-right py-3 px-4 text-text-grey font-medium">Marks</th>
             </tr>
@@ -71,7 +72,7 @@ export default function HistoryTab({ history }: Props) {
                 <td className="py-3 px-4">
                   <Link href={`/events/${r.eventId}`} className="hover:text-brand transition-colors">
                     <p className="font-medium text-text-dark">{r.eventName}</p>
-                    <p className="text-xs text-text-grey">{EVENT_TYPE_LABELS[r.eventType as EventType]}</p>
+                    <p className="text-xs text-text-grey">{EVENT_TYPE_LABELS[r.eventType as EventType]}{r.discipline ? ` · ${r.discipline}` : ""}</p>
                   </Link>
                 </td>
                 <td className="py-3 px-4 text-text-grey text-xs whitespace-nowrap">
@@ -81,6 +82,13 @@ export default function HistoryTab({ history }: Props) {
                   <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${PLACE_STYLES[r.place] ?? ""}`}>
                     {PLACE_LABELS[r.place as Place]}
                   </span>
+                </td>
+                <td className="py-3 px-4">
+                  {r.performance ? (
+                    <span className="text-xs text-text-dark font-mono">{r.performance}</span>
+                  ) : (
+                    <span className="text-text-grey text-xs">—</span>
+                  )}
                 </td>
                 <td className="py-3 px-4">
                   <div className="flex gap-1.5 flex-wrap">

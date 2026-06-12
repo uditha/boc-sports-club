@@ -6,6 +6,7 @@ import { eq, and } from "drizzle-orm";
 import { requireAdmin, requireUser } from "@/lib/auth-helpers";
 import { randomUUID } from "crypto";
 import { revalidatePath } from "next/cache";
+import type { PerformanceUnit } from "@/lib/performance";
 
 export type SportRow = {
   id: string;
@@ -19,6 +20,7 @@ export type DisciplineRow = {
   sportId: string;
   name: string;
   active: boolean | number;
+  performanceUnit: string;
 };
 
 export async function getSports(): Promise<SportRow[]> {
@@ -89,7 +91,7 @@ export async function getAllDisciplinesBySport(): Promise<Record<string, string[
   return map;
 }
 
-export async function createDiscipline(sportId: string, name: string) {
+export async function createDiscipline(sportId: string, name: string, performanceUnit?: PerformanceUnit) {
   await requireAdmin();
   const trimmed = name.trim();
   if (!trimmed) return { error: "Discipline name is required" };
@@ -97,7 +99,13 @@ export async function createDiscipline(sportId: string, name: string) {
 
   const db = getDb();
   try {
-    await db.insert(sportDisciplines).values({ id: randomUUID(), sportId, name: trimmed, active: true });
+    await db.insert(sportDisciplines).values({
+      id: randomUUID(),
+      sportId,
+      name: trimmed,
+      active: true,
+      ...(performanceUnit ? { performanceUnit } : {}),
+    });
     revalidatePath("/settings");
     return { success: true };
   } catch {
@@ -105,17 +113,18 @@ export async function createDiscipline(sportId: string, name: string) {
   }
 }
 
-export async function updateDiscipline(id: string, data: { name?: string; active?: boolean }) {
+export async function updateDiscipline(id: string, data: { name?: string; active?: boolean; performanceUnit?: PerformanceUnit }) {
   await requireAdmin();
   const db = getDb();
 
-  const updates: { name?: string; active?: boolean } = {};
+  const updates: { name?: string; active?: boolean; performanceUnit?: PerformanceUnit } = {};
   if (data.name !== undefined) {
     const trimmed = data.name.trim();
     if (!trimmed) return { error: "Discipline name is required" };
     updates.name = trimmed;
   }
   if (data.active !== undefined) updates.active = data.active;
+  if (data.performanceUnit !== undefined) updates.performanceUnit = data.performanceUnit;
 
   try {
     await db.update(sportDisciplines).set(updates).where(eq(sportDisciplines.id, id));

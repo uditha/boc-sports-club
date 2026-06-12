@@ -110,6 +110,21 @@ export const results = sqliteTable(
   ]
 );
 
+export const eventImages = sqliteTable("event_images", {
+  id: text("id").primaryKey(),
+  eventId: text("event_id")
+    .notNull()
+    .references(() => events.id),
+  // Compressed JPEG data URL — no external blob storage is configured for this app
+  url: text("url").notNull(),
+  caption: text("caption"),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdBy: text("created_by").references(() => users.id),
+  createdAt: text("created_at")
+    .notNull()
+    .default(sql`(datetime('now'))`),
+});
+
 export const auditLog = sqliteTable("audit_log", {
   id: text("id").primaryKey(),
   userId: text("user_id").references(() => users.id),

@@ -33,7 +33,7 @@ interface Props {
   defaultEventId?: string;
 }
 
-type PlaceSlot = { playerId: string; bestAthlete: boolean; meetRecord: boolean } | null;
+type PlaceSlot = { playerId: string; bestAthlete: boolean; meetRecord: boolean; performance: string } | null;
 
 const PLACE_CONFIG = [
   { place: "1" as Place, label: "1st Place", emoji: "🥇", color: "border-yellow-300 bg-yellow-50", selectedColor: "border-yellow-400 bg-yellow-100" },
@@ -166,7 +166,8 @@ export default function BulkResultForm({ events, players, sports, sportDisciplin
         setParticipantIds((p) => { const s = new Set(p); s.delete(playerId); return s; });
         // Clear from other slots
         next.forEach((s, i) => { if (i !== index && s?.playerId === playerId) next[i] = null; });
-        next[index] = { playerId, bestAthlete: prev[index]?.playerId === playerId ? (prev[index]?.bestAthlete ?? false) : false, meetRecord: prev[index]?.playerId === playerId ? (prev[index]?.meetRecord ?? false) : false };
+        const keep = prev[index]?.playerId === playerId;
+        next[index] = { playerId, bestAthlete: keep ? (prev[index]?.bestAthlete ?? false) : false, meetRecord: keep ? (prev[index]?.meetRecord ?? false) : false, performance: keep ? (prev[index]?.performance ?? "") : "" };
       }
       return next;
     });
@@ -176,6 +177,14 @@ export default function BulkResultForm({ events, players, sports, sportDisciplin
     setSlots((prev) => {
       const next: [PlaceSlot, PlaceSlot, PlaceSlot] = [...prev] as [PlaceSlot, PlaceSlot, PlaceSlot];
       if (next[index]) next[index] = { ...next[index]!, [flag]: !next[index]![flag] };
+      return next;
+    });
+  }
+
+  function setSlotPerformance(index: 0 | 1 | 2, value: string) {
+    setSlots((prev) => {
+      const next: [PlaceSlot, PlaceSlot, PlaceSlot] = [...prev] as [PlaceSlot, PlaceSlot, PlaceSlot];
+      if (next[index]) next[index] = { ...next[index]!, performance: value };
       return next;
     });
   }
@@ -219,10 +228,10 @@ export default function BulkResultForm({ events, players, sports, sportDisciplin
     const entries: BulkEntry[] = [];
     slots.forEach((s, i) => {
       if (!s) return;
-      entries.push({ playerId: s.playerId, place: String(i + 1) as Place, bestAthlete: s.bestAthlete, meetRecord: s.meetRecord });
+      entries.push({ playerId: s.playerId, place: String(i + 1) as Place, bestAthlete: s.bestAthlete, meetRecord: s.meetRecord, performance: s.performance.trim() || null });
     });
     participantIds.forEach((pid) => {
-      entries.push({ playerId: pid, place: "participated", bestAthlete: false, meetRecord: false });
+      entries.push({ playerId: pid, place: "participated", bestAthlete: false, meetRecord: false, performance: null });
     });
 
     const res = await createBulkResults(eventId, sport, discipline || null, gender, ageCategory || null, entries);
@@ -412,6 +421,22 @@ export default function BulkResultForm({ events, players, sports, sportDisciplin
                   excludeIds={excludeForSlot}
                   placeholder={`Search for ${config.label} player…`}
                 />
+
+                {slot && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-dark mb-1">
+                      Performance
+                      <span className="text-text-grey font-normal ml-1">(optional — e.g. 10.85s, 6.45m)</span>
+                    </label>
+                    <input
+                      type="text"
+                      value={slot.performance}
+                      onChange={(e) => setSlotPerformance(index as 0 | 1 | 2, e.target.value)}
+                      placeholder="e.g. 10.85s or 6.45m"
+                      className="w-full px-3 py-2 rounded-xl border border-purple-200 bg-white text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand"
+                    />
+                  </div>
+                )}
               </div>
             );
           })}

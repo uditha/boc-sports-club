@@ -7,6 +7,16 @@ import {
   createSport, updateSport, createDiscipline, updateDiscipline,
   type SportRow, type DisciplineRow,
 } from "@/app/actions/sports";
+import type { PerformanceUnit } from "@/lib/performance";
+
+const UNIT_OPTIONS: { value: PerformanceUnit; label: string }[] = [
+  { value: "none",        label: "No unit" },
+  { value: "seconds",     label: "seconds" },
+  { value: "metres",      label: "metres" },
+  { value: "centimetres", label: "centimetres" },
+  { value: "kilograms",   label: "kilograms" },
+  { value: "points",      label: "points" },
+];
 
 interface Props {
   sportsList: SportRow[];
@@ -27,8 +37,10 @@ export default function SportManagement({ sportsList, disciplinesBySport }: Prop
   // Discipline-level state (keyed by sportId)
   const [addingDisciplineFor, setAddingDisciplineFor] = useState<string | null>(null);
   const [newDisciplineName, setNewDisciplineName] = useState("");
+  const [newDisciplineUnit, setNewDisciplineUnit] = useState<PerformanceUnit>("none");
   const [editingDisciplineId, setEditingDisciplineId] = useState<string | null>(null);
   const [editDisciplineName, setEditDisciplineName] = useState("");
+  const [editDisciplineUnit, setEditDisciplineUnit] = useState<PerformanceUnit>("none");
 
   // ── Sport handlers ─────────────────────────────────────────────────────────
 
@@ -62,20 +74,29 @@ export default function SportManagement({ sportsList, disciplinesBySport }: Prop
 
   async function handleAddDiscipline(e: React.FormEvent, sportId: string) {
     e.preventDefault();
-    const result = await createDiscipline(sportId, newDisciplineName);
+    const result = await createDiscipline(sportId, newDisciplineName, newDisciplineUnit);
     if (result.error) { toast.error(result.error); return; }
     toast.success("Discipline added");
     setNewDisciplineName("");
+    setNewDisciplineUnit("none");
     setAddingDisciplineFor(null);
     router.refresh();
   }
 
   async function handleRenameDiscipline(id: string) {
-    const result = await updateDiscipline(id, { name: editDisciplineName });
+    const result = await updateDiscipline(id, { name: editDisciplineName, performanceUnit: editDisciplineUnit });
     if (result.error) { toast.error(result.error); return; }
-    toast.success("Discipline renamed");
+    toast.success("Discipline updated");
     setEditingDisciplineId(null);
     router.refresh();
+  }
+
+  function handleUnitChange(id: string, unit: PerformanceUnit) {
+    startTransition(async () => {
+      const result = await updateDiscipline(id, { performanceUnit: unit });
+      if (result.error) { toast.error(result.error); return; }
+      router.refresh();
+    });
   }
 
   function handleToggleDiscipline(id: string, currentActive: boolean | number) {
@@ -237,10 +258,17 @@ export default function SportManagement({ sportsList, disciplinesBySport }: Prop
                           placeholder="e.g. 100m, Long Jump, Shot Put"
                           className="flex-1 px-3 py-1.5 rounded-xl border border-purple-200 text-sm focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand bg-white"
                         />
+                        <select
+                          value={newDisciplineUnit}
+                          onChange={(e) => setNewDisciplineUnit(e.target.value as PerformanceUnit)}
+                          className="px-2 py-1.5 rounded-xl border border-purple-200 text-xs text-text-grey focus:outline-none focus:ring-2 focus:ring-brand/30 focus:border-brand bg-white"
+                        >
+                          {UNIT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                        </select>
                         <button type="submit" className="px-3 py-1.5 rounded-xl bg-brand text-white text-xs font-semibold hover:bg-brand-dark transition-colors">
                           Add
                         </button>
-                        <button type="button" onClick={() => setAddingDisciplineFor(null)}
+                        <button type="button" onClick={() => { setAddingDisciplineFor(null); setNewDisciplineUnit("none"); }}
                           className="px-3 py-1.5 rounded-xl border border-purple-200 text-xs text-text-grey hover:bg-white transition-colors">
                           Cancel
                         </button>
@@ -265,6 +293,13 @@ export default function SportManagement({ sportsList, disciplinesBySport }: Prop
                                   }}
                                   className="px-2.5 py-1 rounded-lg border border-brand text-xs focus:outline-none focus:ring-2 focus:ring-brand/30 flex-1"
                                 />
+                                <select
+                                  value={editDisciplineUnit}
+                                  onChange={(e) => setEditDisciplineUnit(e.target.value as PerformanceUnit)}
+                                  className="px-2 py-1 rounded-lg border border-brand text-xs focus:outline-none focus:ring-2 focus:ring-brand/30 bg-white"
+                                >
+                                  {UNIT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                </select>
                                 <button onClick={() => handleRenameDiscipline(d.id)}
                                   className="px-2.5 py-1 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark transition-colors">
                                   Save
@@ -279,7 +314,15 @@ export default function SportManagement({ sportsList, disciplinesBySport }: Prop
                                 <span className={`flex-1 text-xs font-medium ${Boolean(d.active) ? "text-text-dark" : "text-text-grey line-through"}`}>
                                   {d.name}
                                 </span>
-                                <button onClick={() => { setEditingDisciplineId(d.id); setEditDisciplineName(d.name); }}
+                                <select
+                                  value={d.performanceUnit ?? "none"}
+                                  onChange={(e) => handleUnitChange(d.id, e.target.value as PerformanceUnit)}
+                                  disabled={isPending}
+                                  className="px-2 py-1 rounded-lg border border-purple-200 text-xs text-text-grey focus:outline-none focus:ring-2 focus:ring-brand/30 bg-white disabled:opacity-50"
+                                >
+                                  {UNIT_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                                </select>
+                                <button onClick={() => { setEditingDisciplineId(d.id); setEditDisciplineName(d.name); setEditDisciplineUnit((d.performanceUnit ?? "none") as PerformanceUnit); }}
                                   className="text-xs text-brand hover:text-brand-dark font-medium transition-colors">
                                   Rename
                                 </button>
