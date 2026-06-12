@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { toast } from "sonner";
 import type { AnnualReportData } from "@/app/actions/reports";
 
 interface Props {
@@ -23,10 +24,14 @@ export default function AnnualReportExportButton({ data }: Props) {
       const a = document.createElement("a");
       a.href = url;
       a.download = `BOC_Sports_Annual_Report_${data.year}.pdf`;
+      document.body.appendChild(a);
       a.click();
-      URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
+      toast.success("PDF ready — check your downloads");
     } catch (e) {
       console.error(e);
+      toast.error("Could not generate PDF — " + (e instanceof Error ? e.message : String(e)));
     } finally {
       setGenerating(false);
     }

@@ -1,5 +1,8 @@
 // @ts-nocheck — @react-pdf/renderer has a known JSX type conflict with React 19
-import { Document, Page, Text, View, StyleSheet } from "@react-pdf/renderer";
+import { Document, Page, Text, View, StyleSheet, Font } from "@react-pdf/renderer";
+
+// Disable automatic hyphenation — short stat labels break badly when hyphenated
+Font.registerHyphenationCallback(word => [word]);
 import type { AnnualReportData } from "@/app/actions/reports";
 
 const PURPLE = "#A05AFF";
@@ -17,7 +20,7 @@ const styles = StyleSheet.create({
 
   // Cover page
   coverPage: { fontFamily: "Helvetica", padding: 0, backgroundColor: PURPLE },
-  coverContent: { flex: 1, alignItems: "center", justifyContent: "center", padding: 60 },
+  coverContent: { flex: 1, alignItems: "center", justifyContent: "center", padding: 40 },
   coverTitle: { fontSize: 28, fontFamily: "Helvetica-Bold", color: WHITE, textAlign: "center", marginBottom: 8 },
   coverSubtitle: { fontSize: 14, color: "rgba(255,255,255,0.85)", textAlign: "center", marginBottom: 4 },
   coverYear: { fontSize: 48, fontFamily: "Helvetica-Bold", color: WHITE, textAlign: "center", marginTop: 16, marginBottom: 16 },
@@ -25,8 +28,8 @@ const styles = StyleSheet.create({
   coverDate: { fontSize: 10, color: "rgba(255,255,255,0.65)", textAlign: "center" },
 
   // Summary stats on cover
-  statsRow: { flexDirection: "row", gap: 12, marginTop: 32 },
-  statBox: { flex: 1, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 8, padding: 12, alignItems: "center" },
+  statsRow: { flexDirection: "row", gap: 8, marginTop: 32 },
+  statBox: { flex: 1, backgroundColor: "rgba(255,255,255,0.15)", borderRadius: 8, padding: "12 8", alignItems: "center" },
   statNum: { fontSize: 22, fontFamily: "Helvetica-Bold", color: WHITE },
   statLabel: { fontSize: 8, color: "rgba(255,255,255,0.75)", marginTop: 2, textAlign: "center" },
 
@@ -122,15 +125,15 @@ export function AnnualReportPdf({ data }: Props) {
           <View style={styles.statsRow}>
             <View style={styles.statBox}>
               <Text style={styles.statNum}>{data.totalEvents}</Text>
-              <Text style={styles.statLabel}>Events Held</Text>
+              <Text style={styles.statLabel}>Events</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statNum}>{data.uniquePlayers}</Text>
-              <Text style={styles.statLabel}>Players Participated</Text>
+              <Text style={styles.statLabel}>Players</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statNum}>{data.totalResults}</Text>
-              <Text style={styles.statLabel}>Results Recorded</Text>
+              <Text style={styles.statLabel}>Results</Text>
             </View>
             <View style={styles.statBox}>
               <Text style={styles.statNum}>{data.totalMarks}</Text>
